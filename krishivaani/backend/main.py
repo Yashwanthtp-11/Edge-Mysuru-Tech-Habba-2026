@@ -6,11 +6,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 PACKAGE_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-for path in (PACKAGE_ROOT, PROJECT_ROOT):
+BACKEND_ROOT = os.path.join(PROJECT_ROOT, "backend")
+for path in (PACKAGE_ROOT, PROJECT_ROOT, BACKEND_ROOT):
     if path not in sys.path:
         sys.path.insert(0, path)
 
 from .routes import vision
+from app.api.notifications import router as notifications_router
+from app.api.weather import router as weather_router
 
 try:
     from .routes import assistant
@@ -33,6 +36,8 @@ app.add_middleware(
 if assistant is not None:
     app.include_router(assistant.router, prefix="/assistant", tags=["Assistant"])
 app.include_router(vision.router)
+app.include_router(weather_router)
+app.include_router(notifications_router)
 
 @app.get("/")
 def read_root():
