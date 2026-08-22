@@ -1,6 +1,23 @@
+import os
+import sys
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routes import assistant
+
+PACKAGE_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+for path in (PACKAGE_ROOT, PROJECT_ROOT):
+    if path not in sys.path:
+        sys.path.insert(0, path)
+
+from .routes import vision
+
+try:
+    from .routes import assistant
+except ModuleNotFoundError as error:
+    if error.name != "sherpa_onnx":
+        raise
+    assistant = None
 
 app = FastAPI(title="KrishiVaani Backend API")
 
@@ -13,8 +30,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include the assistant router
-app.include_router(assistant.router, prefix="/assistant", tags=["Assistant"])
+if assistant is not None:
+    app.include_router(assistant.router, prefix="/assistant", tags=["Assistant"])
+app.include_router(vision.router)
 
 @app.get("/")
 def read_root():

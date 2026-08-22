@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ImageUpload from "./components/ImageUpload.jsx";
 
 const modules = [
   {
@@ -194,6 +195,14 @@ function App() {
       </section>
 
       <NotificationsCard />
+
+      <section aria-labelledby="diagnosis-title">
+        <div className="updates-heading">
+          <p className="eyebrow">Evidence-backed plant health guidance</p>
+          <h2 id="diagnosis-title">Diagnose a leaf</h2>
+        </div>
+        <ImageUpload />
+      </section>
 
       <footer>
         <span>Built for farmers, with care.</span>
