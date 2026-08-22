@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+sherpa-onnx
+torch
+transformers
+langdetect
+soundfile
+numpy
+accelerate
+groq

@@ -1,20 +1,24 @@
 # Python
 __pycache__/
 *.py[cod]
+.pytest_cache/
 
-# Virtual environment
+# Virtual environments
 .venv/
+venv/
 
 # Secrets
 .env
 .env.*
+!.env.example
 
 # Datasets
 data/raw/
 data/processed/
 datasets/
+data/samples/
 
-# Model weights
+# Model weights / large artifacts
 models/*
 *.pt
 *.pth
@@ -31,10 +35,16 @@ huggingface_cache/
 # IDE
 .vscode/
 
+# Frontend
+node_modules/
+dist/
+
 # Logs
 *.log
 
 # OS
 Thumbs.db
 .DS_Store
-data/samples/*
+
+# Project cache
+backend/data/notification_cache.json
