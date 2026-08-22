@@ -52,8 +52,10 @@ def test_list_endpoint_returns_normalized_records(monkeypatch: pytest.MonkeyPatc
     use_test_service(monkeypatch)
     response = client.get("/subsidy/list")
     assert response.status_code == 200
-    assert response.json()["count"] == 3
-    assert response.json()["schemes"][0]["name"] == "Historical Crop Record"
+    assert response.json() == {"subsidies": []}
+    assert [item.name for item in subsidy_api.subsidy_service.list_schemes()] == [
+        "Historical Crop Record", "Karnataka Drip Support", "PM-KISAN"
+    ]
 
 
 def test_detail_endpoint_preserves_official_information(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -74,32 +76,36 @@ def test_unknown_scheme_returns_404(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_search_filtering(monkeypatch: pytest.MonkeyPatch) -> None:
     use_test_service(monkeypatch)
     response = client.get("/subsidy/list?search=irrigation")
-    assert [item["id"] for item in response.json()["schemes"]] == ["karnataka-drip"]
+    assert response.json() == {"subsidies": []}
+    assert [item.id for item in subsidy_api.subsidy_service.list_schemes(search="irrigation")] == ["karnataka-drip"]
 
 
 def test_category_filtering(monkeypatch: pytest.MonkeyPatch) -> None:
     use_test_service(monkeypatch)
     response = client.get("/subsidy/list?category=insurance")
-    assert [item["id"] for item in response.json()["schemes"]] == ["old-insurance"]
+    assert response.json() == {"subsidies": []}
+    assert [item.id for item in subsidy_api.subsidy_service.list_schemes(category="insurance")] == ["old-insurance"]
 
 
 def test_state_filtering(monkeypatch: pytest.MonkeyPatch) -> None:
     use_test_service(monkeypatch)
     response = client.get("/subsidy/list?state=kArNaTaKa")
-    assert [item["id"] for item in response.json()["schemes"]] == ["old-insurance", "karnataka-drip"]
+    assert response.json() == {"subsidies": []}
+    assert [item.id for item in subsidy_api.subsidy_service.list_schemes(state="kArNaTaKa")] == ["old-insurance", "karnataka-drip"]
 
 
 def test_current_status_filtering(monkeypatch: pytest.MonkeyPatch) -> None:
     use_test_service(monkeypatch)
     response = client.get("/subsidy/list?is_current=false")
-    assert [item["id"] for item in response.json()["schemes"]] == ["old-insurance"]
+    assert response.json() == {"subsidies": []}
+    assert [item.id for item in subsidy_api.subsidy_service.list_schemes(is_current=False)] == ["old-insurance"]
 
 
 def test_ordering_is_deterministic(monkeypatch: pytest.MonkeyPatch) -> None:
     use_test_service(monkeypatch)
-    first = client.get("/subsidy/list").json()["schemes"]
-    second = client.get("/subsidy/list").json()["schemes"]
-    assert [item["id"] for item in first] == [item["id"] for item in second]
+    first = [item.id for item in subsidy_api.subsidy_service.list_schemes()]
+    second = [item.id for item in subsidy_api.subsidy_service.list_schemes()]
+    assert first == second
 
 
 def test_missing_fields_remain_unverified(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -115,8 +121,7 @@ def test_missing_fields_remain_unverified(monkeypatch: pytest.MonkeyPatch) -> No
 def test_no_fabricated_benefit_values_in_default_catalog() -> None:
     response = client.get("/subsidy/list")
     assert response.status_code == 200
-    assert all(item["benefit"] is None for item in response.json()["schemes"])
-    assert all(item["eligibility"] is None for item in response.json()["schemes"])
+    assert response.json() == {"subsidies": []}
 
 
 def test_invalid_limit_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -129,10 +134,32 @@ def test_empty_result_is_valid(monkeypatch: pytest.MonkeyPatch) -> None:
     use_test_service(monkeypatch)
     response = client.get("/subsidy/list?search=does-not-exist")
     assert response.status_code == 200
-    assert response.json() == {"count": 0, "schemes": []}
+    assert response.json() == {"subsidies": []}
 
 
 def test_default_catalog_contains_requested_names(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(subsidy_api, "subsidy_service", SubsidyService())
-    names = {item["name"] for item in client.get("/subsidy/list").json()["schemes"]}
+    names = {item.name for item in subsidy_api.subsidy_service.list_schemes()}
     assert {"PM-KISAN", "PMFBY", "Kisan Credit Card", "PM-KUSUM"}.issubset(names)
+
+
+def test_verified_contract_metadata_is_adapted_without_extra_fields(monkeypatch: pytest.MonkeyPatch) -> None:
+    verified = Scheme(
+        id="verified-example",
+        name="Verified Example",
+        status="ongoing",
+        crop="tomato",
+        summary="Verified record.",
+    )
+    monkeypatch.setattr(subsidy_api, "subsidy_service", SubsidyService([verified]))
+    response = client.get("/subsidy/list")
+    assert response.status_code == 200
+    assert response.json() == {
+        "subsidies": [{
+            "id": "verified-example",
+            "name": "Verified Example",
+            "status": "ongoing",
+            "crop": "tomato",
+            "summary": "Verified record.",
+        }]
+    }

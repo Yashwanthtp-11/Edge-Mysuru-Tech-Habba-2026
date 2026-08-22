@@ -94,14 +94,16 @@ def test_route_validation_and_response(monkeypatch: pytest.MonkeyPatch) -> None:
     market_api.market_service = MarketService(client=mock_client())
     response = client.get("/market/prices?crop=tomato&market=Mysuru&limit=1")
     assert response.status_code == 200
-    assert response.json()["count"] == 1
-    assert response.json()["prices"][0]["source"] == "data.gov.in / Agmarknet"
+    assert response.json() == {
+        "crop": "tomato",
+        "prices": [{"mandi": "Mysuru", "price_per_quintal": 2400}],
+    }
     assert client.get("/market/prices?crop=").status_code == 422
     assert client.get("/market/prices?limit=51").status_code == 422
 
 
 def test_provider_failures_do_not_expose_credentials() -> None:
     market_api.market_service = MarketService(client=mock_client({}, 500))
-    response = client.get("/market/prices")
+    response = client.get("/market/prices?crop=tomato")
     assert response.status_code == 502
     assert "test-key" not in response.text

@@ -1,13 +1,13 @@
 from fastapi import APIRouter, HTTPException, Query
 
-from app.schemas.subsidy import Scheme, SchemeResponse
+from app.schemas.subsidy import Scheme, SubsidyContractResponse
 from app.services.subsidy_service import SubsidyService
 
 router = APIRouter(prefix="/subsidy", tags=["subsidy"])
 subsidy_service = SubsidyService()
 
 
-@router.get("/list", response_model=SchemeResponse)
+@router.get("/list", response_model=SubsidyContractResponse)
 async def list_schemes(
     search: str | None = Query(None, min_length=1, max_length=100),
     category: str | None = Query(None, min_length=1, max_length=100),
@@ -16,8 +16,8 @@ async def list_schemes(
     is_current: bool | None = None,
     limit: int = Query(20, ge=1, le=100),
 ) -> SchemeResponse:
-    schemes = subsidy_service.list_schemes(search, category, state, level, is_current, limit)
-    return SchemeResponse(count=len(schemes), schemes=schemes)
+    schemes = subsidy_service.list_contract_schemes(search, category, state, level, is_current, limit)
+    return SubsidyContractResponse(subsidies=schemes)
 
 
 @router.get("/{scheme_id}", response_model=Scheme)

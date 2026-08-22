@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime, timezone
 
 import httpx
 import pytest
@@ -6,9 +7,11 @@ from fastapi.testclient import TestClient
 
 from app.api import weather as weather_api
 from app.main import app
+from app.schemas.weather import AgriculturalAdvisory, CurrentWeather, ForecastItem, Location, WeatherForecast
 from app.services.weather_service import WeatherService, WeatherServiceError, generate_advisory
 
 client = TestClient(app)
+NOW = datetime.now(timezone.utc)
 
 CURRENT_PAYLOAD = {
     "name": "Mysuru",
@@ -133,6 +136,43 @@ def test_invalid_provider_response_is_rejected() -> None:
 
     assert error.value.status_code == 502
     assert error.value.code == "WEATHER_PROVIDER_INVALID_RESPONSE"
+
+
+def test_contract_weather_route_reuses_existing_service(monkeypatch: pytest.MonkeyPatch) -> None:
+    class WeatherContractStub:
+        async def current(self, latitude: float, longitude: float) -> CurrentWeather:
+            return CurrentWeather(
+                location=Location(latitude=latitude, longitude=longitude),
+                temperature_c=28.4,
+                feels_like_c=30.1,
+                humidity_percent=72,
+                wind_speed_mps=3.2,
+                condition="Clouds",
+                description="scattered clouds",
+                rain_probability=None,
+                agricultural_advisory=AgriculturalAdvisory(messages=["Weather conditions are currently moderate."]),
+            )
+
+        async def forecast(self, latitude: float, longitude: float) -> WeatherForecast:
+            return WeatherForecast(
+                location=Location(latitude=latitude, longitude=longitude),
+                forecast=[ForecastItem(
+                    timestamp=NOW,
+                    temperature_c=28,
+                    humidity_percent=70,
+                    condition="Clouds",
+                    description="few clouds",
+                    rain_probability=20,
+                    wind_speed_mps=2,
+                )],
+            )
+
+    monkeypatch.setattr(weather_api, "weather_service", WeatherContractStub())
+    response = client.get("/weather?lat=12&lon=76")
+    assert response.status_code == 200
+    assert set(response.json()) == {"current", "forecast", "suggestion"}
+    assert response.json()["current"] == {"temp": 28.4, "condition": "Clouds", "rain_chance": 0}
+    assert response.json()["suggestion"] == "Weather conditions are currently moderate."
 
 
 @pytest.mark.parametrize(

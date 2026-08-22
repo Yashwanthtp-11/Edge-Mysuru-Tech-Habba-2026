@@ -23,3 +23,13 @@ class Alert(BaseModel):
 class AlertResponse(BaseModel):
     count: int
     alerts: list[Alert]
+
+
+class ContractAlert(BaseModel):
+    type: Literal["disease", "price"]
+    message: str = Field(min_length=1)
+    severity: Literal["low", "medium", "high"]
+
+
+class ContractAlertResponse(BaseModel):
+    alerts: list[ContractAlert]

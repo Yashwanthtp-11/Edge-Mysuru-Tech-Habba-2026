@@ -2,14 +2,14 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.schemas.alerts import AlertResponse
+from app.schemas.alerts import AlertResponse, ContractAlert, ContractAlertResponse
 from app.services.alert_service import AlertService
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 alert_service = AlertService()
 
 
-@router.get("", response_model=AlertResponse)
+@router.get("", response_model=ContractAlertResponse)
 async def alerts(
     lat: float | None = Query(None, ge=-90, le=90),
     lon: float | None = Query(None, ge=-180, le=180),
@@ -25,7 +25,16 @@ async def alerts(
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     filtered = [item for item in values if (type is None or item.type == type) and (severity is None or item.severity == severity)]
-    return AlertResponse(count=min(len(filtered), limit), alerts=filtered[:limit])
+    contract_alerts = [
+        ContractAlert(
+            type="price",
+            message=item.message,
+            severity={"info": "low", "warning": "medium", "high": "high"}[item.severity],
+        )
+        for item in filtered
+        if item.type == "market"
+    ]
+    return ContractAlertResponse(alerts=contract_alerts[:limit])
 
 
 @router.get("/latest", response_model=AlertResponse)

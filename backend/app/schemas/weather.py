@@ -41,3 +41,15 @@ class WeatherForecast(BaseModel):
     location: Location
     forecast: list[ForecastItem]
     source: str = "OpenWeather"
+
+
+class WeatherContractCurrent(BaseModel):
+    temp: float
+    condition: str
+    rain_chance: float = Field(ge=0, le=100)
+
+
+class WeatherContractResponse(BaseModel):
+    current: WeatherContractCurrent
+    forecast: list[ForecastItem]
+    suggestion: str

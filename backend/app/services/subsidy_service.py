@@ -1,6 +1,6 @@
 from collections.abc import Iterable
 
-from app.schemas.subsidy import Scheme
+from app.schemas.subsidy import Scheme, SubsidyContract
 
 
 DEFAULT_SCHEMES = (
@@ -50,3 +50,25 @@ class SubsidyService:
 
     def get_scheme(self, scheme_id: str) -> Scheme | None:
         return next((scheme for scheme in self.schemes if scheme.id == scheme_id), None)
+
+    def list_contract_schemes(
+        self,
+        search: str | None = None,
+        category: str | None = None,
+        state: str | None = None,
+        level: str | None = None,
+        is_current: bool | None = None,
+        limit: int = 20,
+    ) -> list[SubsidyContract]:
+        contracts = []
+        for scheme in self.list_schemes(search, category, state, level, is_current, limit):
+            if scheme.status is None or scheme.crop is None or scheme.summary is None:
+                continue
+            contracts.append(SubsidyContract(
+                id=scheme.id,
+                name=scheme.name,
+                status=scheme.status,
+                crop=scheme.crop,
+                summary=scheme.summary,
+            ))
+        return contracts

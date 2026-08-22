@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.api import alerts as alerts_api
 from app.main import app
+from app.schemas.alerts import Alert
 from app.schemas.market import MarketPrice
 from app.schemas.notification import Notification
 from app.schemas.weather import ForecastItem, Location, WeatherForecast
@@ -137,3 +138,25 @@ def test_endpoint_filters_and_validation(monkeypatch: pytest.MonkeyPatch) -> Non
     assert client.get("/alerts?severity=urgent").status_code == 422
     assert client.get("/alerts?limit=51").status_code == 422
     assert client.get("/alerts?lat=12").status_code == 422
+
+
+def test_contract_alert_route_maps_only_price_alerts(monkeypatch: pytest.MonkeyPatch) -> None:
+    class AlertStub:
+        async def build(self, *args):
+            return [Alert(
+                id="price-alert",
+                type="market",
+                severity="warning",
+                title="Market price difference detected",
+                message="Compare current local prices.",
+                source="Agmarknet",
+                created_at=NOW,
+                is_new=True,
+            )]
+
+    monkeypatch.setattr(alerts_api, "alert_service", AlertStub())
+    response = client.get("/alerts")
+    assert response.status_code == 200
+    assert response.json() == {
+        "alerts": [{"type": "price", "message": "Compare current local prices.", "severity": "medium"}]
+    }
