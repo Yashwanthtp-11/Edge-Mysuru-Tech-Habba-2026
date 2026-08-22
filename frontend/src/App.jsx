@@ -24,7 +24,7 @@ const modules = [
   },
 ];
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://krishivaani-api-2026.loca.lt";
 const DEMO_LOCATION = { lat: 12.2958, lon: 76.6394 };
 
 function WeatherCard() {
@@ -36,7 +36,12 @@ function WeatherCard() {
 
     fetch(
       `${API_BASE_URL}/api/weather/current?lat=${DEMO_LOCATION.lat}&lon=${DEMO_LOCATION.lon}`,
-      { signal: controller.signal },
+      { 
+        signal: controller.signal,
+        headers: {
+          'Bypass-Tunnel-Reminder': 'true'
+        }
+      },
     )
       .then((response) => {
         if (!response.ok) {
@@ -112,7 +117,7 @@ function VoiceAssistantCard() {
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.wav');
 
-      const response = await fetch('https://krishivaani-api-2026.loca.lt/assistant/chat', {
+      const response = await fetch(`${API_BASE_URL}/api/assistant/chat`, {
         method: 'POST',
         headers: {
           'Bypass-Tunnel-Reminder': 'true',
@@ -159,7 +164,11 @@ function NotificationsCard() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/notifications/latest?limit=3`)
+    fetch(`${API_BASE_URL}/api/notifications/latest?limit=3`, {
+      headers: {
+        'Bypass-Tunnel-Reminder': 'true'
+      }
+    })
       .then((response) => {
         if (!response.ok) {
           throw new Error("Notification request failed");
