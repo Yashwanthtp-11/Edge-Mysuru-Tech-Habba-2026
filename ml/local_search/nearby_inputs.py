@@ -22,4 +22,12 @@ def search_nearby_inputs(
     if provider is None:
         return NearbyInputsSearchResult(status="provider_not_configured", results=[]).to_dict()
 
+    if provider == "google":
+        try:
+            from ml.local_search.google_places import search_nearby_inputs as search_google
+
+            return search_google(latitude, longitude, radius_km, input_category)
+        except Exception:
+            return NearbyInputsSearchResult(status="provider_error", results=[]).to_dict()
+
     return NearbyInputsSearchResult(status="provider_not_configured", results=[]).to_dict()
