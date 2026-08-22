@@ -15,7 +15,7 @@ async def list_schemes(
     level: str | None = Query(None, min_length=1, max_length=50),
     is_current: bool | None = None,
     limit: int = Query(20, ge=1, le=100),
-) -> SchemeResponse:
+) -> SubsidyContractResponse:
     schemes = subsidy_service.list_contract_schemes(search, category, state, level, is_current, limit)
     return SubsidyContractResponse(subsidies=schemes)
 
