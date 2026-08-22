@@ -164,7 +164,7 @@ function NotificationsCard() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/notifications/latest?limit=3`, {
+    fetch(`${API_BASE_URL}/notifications/latest?limit=3`, {
       headers: {
         'Bypass-Tunnel-Reminder': 'true'
       }
