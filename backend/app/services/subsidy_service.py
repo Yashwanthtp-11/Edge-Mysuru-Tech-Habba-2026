@@ -1,21 +1,29 @@
+import json
 from collections.abc import Iterable
+from pathlib import Path
 
 from app.schemas.subsidy import Scheme, SubsidyContract
 
 
-DEFAULT_SCHEMES = (
-    Scheme(id="pm-kisan", name="PM-KISAN"),
-    Scheme(id="pmfby", name="PMFBY"),
-    Scheme(id="kisan-credit-card", name="Kisan Credit Card"),
-    Scheme(id="pmksy-per-drop-more-crop", name="PMKSY - Per Drop More Crop"),
-    Scheme(id="pm-kusum", name="PM-KUSUM"),
-    Scheme(id="soil-health-card", name="Soil Health Card"),
-)
+DEFAULT_DATA_PATH = Path(__file__).parents[2] / "data" / "subsidies.json"
+
+
+def load_schemes(data_path: Path = DEFAULT_DATA_PATH) -> tuple[Scheme, ...]:
+    try:
+        payload = json.loads(data_path.read_text(encoding="utf-8"))
+        if not isinstance(payload, list):
+            return ()
+        schemes = tuple(Scheme.model_validate(item) for item in payload)
+        if len({scheme.id for scheme in schemes}) != len(schemes):
+            return ()
+        return schemes
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+        return ()
 
 
 class SubsidyService:
-    def __init__(self, schemes: Iterable[Scheme] | None = None) -> None:
-        self.schemes = tuple(schemes if schemes is not None else DEFAULT_SCHEMES)
+    def __init__(self, schemes: Iterable[Scheme] | None = None, data_path: Path = DEFAULT_DATA_PATH) -> None:
+        self.schemes = tuple(schemes) if schemes is not None else load_schemes(data_path)
 
     @staticmethod
     def _matches(scheme: Scheme, search: str | None) -> bool:
@@ -62,7 +70,7 @@ class SubsidyService:
     ) -> list[SubsidyContract]:
         contracts = []
         for scheme in self.list_schemes(search, category, state, level, is_current, limit):
-            if scheme.status is None or scheme.crop is None or scheme.summary is None:
+            if not scheme.verified:
                 continue
             contracts.append(SubsidyContract(
                 id=scheme.id,

@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from app.api import subsidy as subsidy_api
 from app.main import app
 from app.schemas.subsidy import Scheme
-from app.services.subsidy_service import SubsidyService
+from app.services.subsidy_service import SubsidyService, load_schemes
 
 client = TestClient(app)
 
@@ -121,7 +121,18 @@ def test_missing_fields_remain_unverified(monkeypatch: pytest.MonkeyPatch) -> No
 def test_no_fabricated_benefit_values_in_default_catalog() -> None:
     response = client.get("/subsidy/list")
     assert response.status_code == 200
-    assert response.json() == {"subsidies": []}
+    assert len(response.json()["subsidies"]) == 5
+    assert all(item["status"] is None for item in response.json()["subsidies"])
+    assert all(item["crop"] is None for item in response.json()["subsidies"])
+
+
+def test_default_dataset_records_are_verified_with_official_sources() -> None:
+    schemes = SubsidyService().list_schemes()
+    assert len(schemes) == 5
+    assert all(item.verified for item in schemes)
+    assert all(item.source_url for item in schemes)
+    assert all(item.name and item.summary and item.source for item in schemes)
+    assert len({item.id for item in schemes}) == len(schemes)
 
 
 def test_invalid_limit_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -140,7 +151,13 @@ def test_empty_result_is_valid(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_default_catalog_contains_requested_names(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(subsidy_api, "subsidy_service", SubsidyService())
     names = {item.name for item in subsidy_api.subsidy_service.list_schemes()}
-    assert {"PM-KISAN", "PMFBY", "Kisan Credit Card", "PM-KUSUM"}.issubset(names)
+    assert {
+        "PM-KISAN",
+        "Pradhan Mantri Fasal Bima Yojana",
+        "Pradhan Mantri Krishi Sinchayee Yojana - Per Drop More Crop",
+        "Soil Health Card Scheme",
+        "PM-KUSUM",
+    }.issubset(names)
 
 
 def test_verified_contract_metadata_is_adapted_without_extra_fields(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -150,6 +167,7 @@ def test_verified_contract_metadata_is_adapted_without_extra_fields(monkeypatch:
         status="ongoing",
         crop="tomato",
         summary="Verified record.",
+        verified=True,
     )
     monkeypatch.setattr(subsidy_api, "subsidy_service", SubsidyService([verified]))
     response = client.get("/subsidy/list")
@@ -163,3 +181,12 @@ def test_verified_contract_metadata_is_adapted_without_extra_fields(monkeypatch:
             "summary": "Verified record.",
         }]
     }
+
+
+def test_malformed_and_empty_datasets_fail_safely(tmp_path) -> None:
+    malformed = tmp_path / "malformed.json"
+    malformed.write_text("{", encoding="utf-8")
+    empty = tmp_path / "empty.json"
+    empty.write_text("[]", encoding="utf-8")
+    assert load_schemes(malformed) == ()
+    assert load_schemes(empty) == ()

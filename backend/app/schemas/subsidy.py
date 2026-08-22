@@ -21,6 +21,11 @@ class Scheme(BaseModel):
     status: Literal["upcoming", "ongoing", "expired"] | None = None
     crop: str | None = None
     summary: str | None = None
+    benefits: list[str] | None = None
+    deadline: datetime | None = None
+    source: str | None = None
+    source_url: AnyHttpUrl | None = None
+    verified: bool = False
 
 
 class SchemeResponse(BaseModel):
@@ -31,9 +36,9 @@ class SchemeResponse(BaseModel):
 class SubsidyContract(BaseModel):
     id: str = Field(min_length=1)
     name: str = Field(min_length=1)
-    status: Literal["upcoming", "ongoing", "expired"]
-    crop: str = Field(min_length=1)
-    summary: str = Field(min_length=1)
+    status: Literal["upcoming", "ongoing", "expired"] | None = None
+    crop: str | None = None
+    summary: str | None = None
 
 
 class SubsidyContractResponse(BaseModel):
