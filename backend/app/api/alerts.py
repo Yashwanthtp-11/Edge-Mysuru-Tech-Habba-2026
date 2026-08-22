@@ -19,7 +19,7 @@ async def alerts(
     type: Literal["weather", "government_notification", "market", "general"] | None = None,
     severity: Literal["info", "warning", "high"] | None = None,
     limit: int = Query(20, ge=1, le=50),
-) -> AlertResponse:
+) -> ContractAlertResponse:
     try:
         values = await alert_service.build(lat, lon, state, district, crop)
     except ValueError as error:
