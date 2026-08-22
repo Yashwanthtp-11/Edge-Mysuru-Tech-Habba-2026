@@ -31,7 +31,7 @@ def _build_query(input_category: str) -> str:
     category = input_category.strip()
     if not category:
         raise ValueError("input_category is required")
-    return category
+    return f"agricultural input store selling {category}"
 
 
 def _parse_google_response(payload: Dict[str, Any], latitude: float, longitude: float) -> List[Dict[str, Any]]:
@@ -68,6 +68,12 @@ def _parse_google_response(payload: Dict[str, Any], latitude: float, longitude: 
     return results
 
 
+def _provider_error(http_status: Optional[int], error_message: str) -> Dict[str, Any]:
+    result = NearbyInputsSearchResult(status="provider_error", results=[]).to_dict()
+    result.update({"http_status": http_status, "error_message": error_message})
+    return result
+
+
 def search_nearby_inputs(
     latitude: float,
     longitude: float,
@@ -94,20 +100,20 @@ def search_nearby_inputs(
 
     query = _build_query(input_category)
     radius_meters = max(1, int(radius_km * 1000))
-    url = "https://places.googleapis.com/v1/places:searchNearby"
+    url = "https://places.googleapis.com/v1/places:searchText"
     headers = {
         "Content-Type": "application/json; charset=UTF-8",
         "X-Goog-Api-Key": api_key,
         "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.googleMapsUri,places.nationalPhoneNumber",
     }
     body = {
-        "locationRestriction": {
+        "textQuery": query,
+        "locationBias": {
             "circle": {
                 "center": {"latitude": latitude, "longitude": longitude},
-                "radius": radius_meters,
+                "radius": float(radius_meters),
             }
         },
-        "keyword": query,
         "maxResultCount": 5,
     }
 
@@ -120,8 +126,18 @@ def search_nearby_inputs(
         )
         with urllib.request.urlopen(request, timeout=20) as response:
             payload = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, urllib.error.HTTPError, ValueError, TimeoutError):
-        return NearbyInputsSearchResult(status="provider_error", results=[]).to_dict()
+    except urllib.error.HTTPError as error:
+        error_message = str(error.reason)
+        try:
+            error_payload = json.loads(error.read().decode("utf-8"))
+            error_message = ((error_payload.get("error") or {}).get("message") or error_message)
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            pass
+        return _provider_error(error.code, error_message)
+    except urllib.error.URLError as error:
+        return _provider_error(None, str(error.reason))
+    except (ValueError, TimeoutError) as error:
+        return _provider_error(None, str(error))
 
     results = _parse_google_response(payload, latitude, longitude)
     return NearbyInputsSearchResult(status="ok", results=results).to_dict()
