@@ -1,12 +1,50 @@
-.env
-.env.*
-!.env.example
+# Python
 __pycache__/
 *.py[cod]
 .pytest_cache/
+
+# Virtual environments
 .venv/
 venv/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Datasets
+data/raw/
+data/processed/
+datasets/
+data/samples/
+
+# Model weights / large artifacts
+models/*
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+# Hugging Face cache
+.cache/
+huggingface_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+
+# Frontend
 node_modules/
 dist/
+
+# Logs
+*.log
+
+# OS
+Thumbs.db
 .DS_Store
+
+# Project cache
 backend/data/notification_cache.json
