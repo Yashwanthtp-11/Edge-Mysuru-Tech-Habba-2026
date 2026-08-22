@@ -1,6 +1,8 @@
 import json
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+
+from ml.local_search.nearby_inputs import search_nearby_inputs
 
 
 def build_uncertain_response(confidence: float, message: str = "I cannot reliably identify the plant problem from this image. Please provide a clearer image.") -> Dict[str, Any]:
@@ -88,7 +90,53 @@ def _build_recommended_inputs(document_text: str) -> List[Dict[str, str]]:
     return recommendations
 
 
-def build_recommendation(vision_result: Dict[str, Any], retrieved_document: Dict[str, Any] | None = None):
+def _search_recommended_inputs(
+    recommended_inputs: List[Dict[str, str]],
+    latitude: Optional[float],
+    longitude: Optional[float],
+    radius_km: float,
+) -> Dict[str, Any]:
+    if latitude is None or longitude is None:
+        return {"location_status": "not_provided", "nearby_sellers": []}
+
+    nearby_sellers: List[Dict[str, Any]] = []
+    provider_statuses: List[str] = []
+    for recommended_input in recommended_inputs:
+        try:
+            search_result = search_nearby_inputs(
+                latitude,
+                longitude,
+                radius_km,
+                recommended_input["category"],
+                provider="google",
+            )
+        except (TypeError, ValueError):
+            provider_statuses.append("provider_error")
+            continue
+
+        provider_statuses.append(search_result.get("status", "provider_error"))
+        nearby_sellers.extend(search_result.get("results", []))
+
+    if "provider_error" in provider_statuses:
+        location_status = "provider_error"
+    elif "ok" in provider_statuses:
+        location_status = "ok"
+    else:
+        location_status = provider_statuses[0] if provider_statuses else "provider_error"
+
+    return {
+        "location_status": location_status,
+        "nearby_sellers": nearby_sellers,
+    }
+
+
+def build_recommendation(
+    vision_result: Dict[str, Any],
+    retrieved_document: Dict[str, Any] | None = None,
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None,
+    radius_km: float = 10,
+):
     """Build a JSON-serializable recommendation result from a valid, high-confidence diagnosis."""
     if not isinstance(vision_result, dict):
         raise ValueError("vision_result must be a dictionary")
@@ -127,6 +175,13 @@ def build_recommendation(vision_result: Dict[str, Any], retrieved_document: Dict
     if not sources:
         sources = ["Retrieved disease document"]
 
+    local_search = _search_recommended_inputs(
+        recommended_inputs,
+        latitude,
+        longitude,
+        radius_km,
+    )
+
     recommendation = {
         "status": "grounded",
         "crop": crop_condition["crop"],
@@ -137,7 +192,8 @@ def build_recommendation(vision_result: Dict[str, Any], retrieved_document: Dict
         "treatment_options": treatment_options,
         "recommended_inputs": recommended_inputs,
         "sources": sources,
-        "nearby_sellers": [],
+        "location_status": local_search["location_status"],
+        "nearby_sellers": local_search["nearby_sellers"],
     }
     return recommendation
 
