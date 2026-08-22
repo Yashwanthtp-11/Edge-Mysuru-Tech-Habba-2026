@@ -12,9 +12,12 @@ export default function AssistantScreen() {
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.wav');
 
-      // POST to the backend FastAPI endpoint we created earlier
-      const response = await fetch('http://localhost:8000/assistant/chat', {
+      // POST to the public localtunnel API endpoint
+      const response = await fetch('https://krishivaani-api-2026.loca.lt/assistant/chat', {
         method: 'POST',
+        headers: {
+          'Bypass-Tunnel-Reminder': 'true', // Bypasses localtunnel's anti-abuse warning screen for APIs
+        },
         body: formData,
       });
 

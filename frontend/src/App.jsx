@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import VoiceButton from "./components/VoiceButton";
 
 const modules = [
   {
@@ -101,6 +102,58 @@ function WeatherCard() {
   );
 }
 
+function VoiceAssistantCard() {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const audioPlayerRef = useRef(null);
+
+  const handleAudioRecorded = async (audioBlob) => {
+    setIsProcessing(true);
+    try {
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.wav');
+
+      const response = await fetch('https://krishivaani-api-2026.loca.lt/assistant/chat', {
+        method: 'POST',
+        headers: {
+          'Bypass-Tunnel-Reminder': 'true',
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get response from assistant');
+      }
+
+      const responseBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(responseBlob);
+      
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.src = audioUrl;
+        audioPlayerRef.current.play();
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Error communicating with KrishiVaani: " + error.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <article className="module-card voice" style={{ paddingBottom: '20px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+        <h2>Voice Assistant</h2>
+        <p style={{ textAlign: 'center', fontSize: '14px', margin: '5px 0 15px 0' }}>Ask questions in Kannada or Hindi.</p>
+        <VoiceButton 
+          onAudioRecorded={handleAudioRecorded} 
+          isProcessing={isProcessing} 
+        />
+        <audio ref={audioPlayerRef} style={{ display: 'none' }} />
+      </div>
+    </article>
+  );
+}
+
 function NotificationsCard() {
   const [notifications, setNotifications] = useState(null);
   const [error, setError] = useState(false);
@@ -176,21 +229,25 @@ function App() {
       </section>
 
       <section className="module-grid" aria-label="KrishiVaani modules">
-        {modules.map((module) => (
-          module.title === "Weather" ? <WeatherCard key={module.title} /> : <article className={`module-card ${module.accent}`} key={module.title}>
-            <div className="module-icon" aria-hidden="true">
-              {module.accent === "sun" && "*"}
-              {module.accent === "leaf" && "+"}
-              {module.accent === "chat" && "..."}
-              {module.accent === "voice" && "))"}
-            </div>
-            <div>
-              <h2>{module.title}</h2>
-              <p>{module.detail}</p>
-            </div>
-            <span className="module-state">Coming soon</span>
-          </article>
-        ))}
+        {modules.map((module) => {
+          if (module.title === "Weather") return <WeatherCard key={module.title} />;
+          if (module.title === "Voice Assistant") return <VoiceAssistantCard key={module.title} />;
+          return (
+            <article className={`module-card ${module.accent}`} key={module.title}>
+              <div className="module-icon" aria-hidden="true">
+                {module.accent === "sun" && "*"}
+                {module.accent === "leaf" && "+"}
+                {module.accent === "chat" && "..."}
+                {module.accent === "voice" && "))"}
+              </div>
+              <div>
+                <h2>{module.title}</h2>
+                <p>{module.detail}</p>
+              </div>
+              <span className="module-state">Coming soon</span>
+            </article>
+          );
+        })}
       </section>
 
       <NotificationsCard />
