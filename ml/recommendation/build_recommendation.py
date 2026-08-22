@@ -5,12 +5,54 @@ from typing import Any, Dict, List, Optional
 from ml.local_search.nearby_inputs import search_nearby_inputs
 
 
+YOUTUBE_RESOURCES: Dict[str, List[Dict[str, str]]] = {
+    "Apple___Apple_scab": [],
+    "Apple___Black_rot": [],
+    "Apple___Cedar_apple_rust": [],
+    "Tomato___Early_blight": [
+        {
+            "type": "youtube",
+            "title": "Tomato Late Blight, Early Blight & Septoria Leaf Spot",
+            "url": "https://www.youtube.com/watch?v=dKAjQ-Gy-aM",
+            "language": "English",
+        }
+    ],
+    "Tomato___Late_blight": [
+        {
+            "type": "youtube",
+            "title": "Tomato Late Blight, Early Blight & Septoria Leaf Spot",
+            "url": "https://www.youtube.com/watch?v=dKAjQ-Gy-aM",
+            "language": "English",
+        }
+    ],
+    "Tomato___Septoria_leaf_spot": [
+        {
+            "type": "youtube",
+            "title": "Management of Septoria Leaf Spot in Tomato",
+            "url": "https://www.youtube.com/watch?v=WYlD1VQ16qI",
+            "language": "English",
+        },
+        {
+            "type": "youtube",
+            "title": "Tomato Late Blight, Early Blight & Septoria Leaf Spot",
+            "url": "https://www.youtube.com/watch?v=dKAjQ-Gy-aM",
+            "language": "English",
+        },
+    ],
+}
+
+
+def _learning_resources(predicted_label: str) -> List[Dict[str, str]]:
+    return [dict(resource) for resource in YOUTUBE_RESOURCES.get(predicted_label, [])]
+
+
 def build_uncertain_response(confidence: float, message: str = "I cannot reliably identify the plant problem from this image. Please provide a clearer image.") -> Dict[str, Any]:
     return {
         "status": "uncertain",
         "confidence": confidence,
         "message": message,
         "nearby_sellers": [],
+        "learning_resources": [],
     }
 
 
@@ -194,6 +236,7 @@ def build_recommendation(
         "sources": sources,
         "location_status": local_search["location_status"],
         "nearby_sellers": local_search["nearby_sellers"],
+        "learning_resources": _learning_resources(predicted_label or ""),
     }
     return recommendation
 
